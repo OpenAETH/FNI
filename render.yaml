@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: fni-api
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: MONGO_URI
+        sync: false
+      - key: API_KEY
+        sync: false
+      - key: LOG_LEVEL
+        value: INFO

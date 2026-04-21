@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FNI — Financial Narrative Intelligence</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f1117;
+      --bg2:       #161b27;
+      --bg3:       #1e2535;
+      --border:    #2a3347;
+      --text:      #e2e8f0;
+      --muted:     #8892a4;
+      --accent:    #3b82f6;
+      --accent2:   #6366f1;
+      --green:     #22c55e;
+      --red:       #ef4444;
+      --amber:     #f59e0b;
+      --high:      #ef4444;
+      --medium:    #f59e0b;
+      --low:       #22c55e;
+      --radius:    8px;
+      --shadow:    0 2px 12px rgba(0,0,0,.4);
+    }
+
+    body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; font-size: 14px; line-height: 1.6; }
+
+    /* ── Layout ── */
+    .layout  { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+    .sidebar { background: var(--bg2); border-right: 1px solid var(--border); padding: 0; display: flex; flex-direction: column; }
+    .main    { padding: 24px; overflow-y: auto; }
+
+    /* ── Sidebar ── */
+    .logo    { padding: 20px 16px 16px; border-bottom: 1px solid var(--border); }
+    .logo h1 { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: .5px; }
+    .logo p  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .nav-section { padding: 12px 8px 4px; font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; margin: 1px 4px; border-radius: var(--radius);
+      cursor: pointer; color: var(--muted); font-size: 13px; transition: all .15s;
+      border: none; background: none; width: calc(100% - 8px); text-align: left;
+    }
+    .nav-item:hover   { background: var(--bg3); color: var(--text); }
+    .nav-item.active  { background: var(--accent); color: #fff; }
+    .nav-item .badge  { margin-left: auto; background: var(--red); color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 10px; font-weight: 600; }
+
+    .company-list { padding: 4px; flex: 1; overflow-y: auto; }
+    .company-item {
+      padding: 8px 12px; margin: 1px 0; border-radius: var(--radius);
+      cursor: pointer; color: var(--muted); font-size: 13px; transition: all .15s;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .company-item:hover  { background: var(--bg3); color: var(--text); }
+    .company-item.active { background: var(--bg3); color: var(--text); border-left: 2px solid var(--accent); padding-left: 10px; }
+
+    /* ── Top bar ── */
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .topbar h2 { font-size: 18px; font-weight: 600; }
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+    .api-input { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: var(--radius); font-size: 12px; width: 240px; }
+    .api-input::placeholder { color: var(--muted); }
+
+    /* ── Cards / Stats ── */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+    .stat-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .stat-card .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+    .stat-card .sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .stat-card.danger .value { color: var(--red); }
+    .stat-card.warn   .value { color: var(--amber); }
+    .stat-card.ok     .value { color: var(--green); }
+    .stat-card.info   .value { color: var(--accent); }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .tab-btn {
+      padding: 8px 16px; border: none; background: none; color: var(--muted);
+      cursor: pointer; font-size: 13px; border-bottom: 2px solid transparent;
+      margin-bottom: -1px; transition: all .15s;
+    }
+    .tab-btn:hover  { color: var(--text); }
+    .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 500; }
+
+    /* ── Filters ── */
+    .filters { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+    .filter-btn {
+      padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border);
+      background: var(--bg2); color: var(--muted); cursor: pointer; font-size: 12px; transition: all .15s;
+    }
+    .filter-btn:hover   { border-color: var(--accent); color: var(--text); }
+    .filter-btn.active  { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    /* ── Table ── */
+    .table-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th { padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); background: var(--bg3); }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--bg3); }
+    tbody td { padding: 10px 14px; vertical-align: middle; }
+
+    /* ── Badges ── */
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+    .badge-high   { background: rgba(239,68,68,.15); color: var(--high); }
+    .badge-medium { background: rgba(245,158,11,.15); color: var(--medium); }
+    .badge-low    { background: rgba(34,197,94,.15);  color: var(--low); }
+    .badge-info   { background: rgba(59,130,246,.15); color: var(--accent); }
+    .badge-approved { background: rgba(34,197,94,.15); color: var(--green); }
+    .badge-rejected { background: rgba(239,68,68,.15); color: var(--red); }
+    .badge-pending  { background: rgba(245,158,11,.15); color: var(--amber); }
+
+    /* ── Deviation ── */
+    .dev-up   { color: var(--green); font-weight: 600; }
+    .dev-down { color: var(--red);   font-weight: 600; }
+
+    /* ── Score bar ── */
+    .score-bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .score-bar { flex: 1; height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; max-width: 80px; }
+    .score-bar-fill { height: 100%; border-radius: 3px; background: var(--accent); }
+    .score-num { font-size: 12px; font-weight: 600; min-width: 30px; }
+
+    /* ── Action buttons ── */
+    .btn { display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; border-radius: var(--radius); border: none; cursor: pointer; font-size: 12px; font-weight: 500; transition: all .15s; }
+    .btn-approve { background: rgba(34,197,94,.2);  color: var(--green); }
+    .btn-approve:hover { background: rgba(34,197,94,.35); }
+    .btn-reject  { background: rgba(239,68,68,.2);  color: var(--red); }
+    .btn-reject:hover  { background: rgba(239,68,68,.35); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-ghost   { background: var(--bg3); color: var(--muted); border: 1px solid var(--border); }
+    .btn-ghost:hover { color: var(--text); }
+    .actions { display: flex; gap: 6px; }
+
+    /* ── Signal card ── */
+    .signal-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; }
+    .signal-card:hover { border-color: #3a4560; }
+    .signal-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .signal-type { font-size: 12px; font-weight: 600; color: var(--accent2); text-transform: uppercase; letter-spacing: .4px; }
+    .signal-quote { font-size: 13px; color: var(--muted); font-style: italic; border-left: 2px solid var(--border); padding-left: 10px; margin: 8px 0; line-height: 1.5; }
+    .signal-justification { font-size: 13px; color: var(--text); }
+    .signal-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+
+    /* ── Empty / loading ── */
+    .empty { text-align: center; color: var(--muted); padding: 48px 20px; font-size: 14px; }
+    .loading { text-align: center; color: var(--muted); padding: 32px; }
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin-right: 8px; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Note modal ── */
+    .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100; display: flex; align-items: center; justify-content: center; }
+    .modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 420px; max-width: 90vw; }
+    .modal h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+    .modal textarea { width: 100%; background: var(--bg3); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius); padding: 10px; font-size: 13px; resize: vertical; min-height: 80px; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+
+    /* ── Toast ── */
+    .toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; font-size: 13px; z-index: 200; animation: slideup .2s ease; box-shadow: var(--shadow); }
+    .toast.ok  { border-left: 3px solid var(--green); }
+    .toast.err { border-left: 3px solid var(--red); }
+    @keyframes slideup { from { transform: translateY(10px); opacity:0; } to { transform: translateY(0); opacity:1; } }
+
+    /* ── Pagination ── */
+    .pagination { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; }
+    .page-btn { padding: 6px 12px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg2); color: var(--muted); cursor: pointer; font-size: 12px; }
+    .page-btn:hover:not(:disabled)  { border-color: var(--accent); color: var(--text); }
+    .page-btn:disabled { opacity: .4; cursor: default; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .stats-row { grid-template-columns: repeat(2,1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="logo">
+      <h1>FNI</h1>
+      <p>Financial Narrative Intelligence</p>
+    </div>
+
+    <div class="nav-section">Vistas</div>
+    <button class="nav-item active" onclick="setView('overview')" id="nav-overview">
+      <span>◈</span> Overview
+    </button>
+    <button class="nav-item" onclick="setView('discrepancies')" id="nav-discrepancies">
+      <span>⚡</span> Discrepancias
+      <span class="badge" id="badge-disc" style="display:none">0</span>
+    </button>
+    <button class="nav-item" onclick="setView('signals')" id="nav-signals">
+      <span>◉</span> Señales narrativas
+      <span class="badge" id="badge-sig" style="display:none">0</span>
+    </button>
+    <button class="nav-item" onclick="setView('reports')" id="nav-reports">
+      <span>◎</span> Reportes
+    </button>
+
+    <div class="nav-section" style="margin-top: 8px;">Empresas</div>
+    <div class="company-list" id="company-list">
+      <div style="padding: 8px 12px; color: var(--muted); font-size: 12px;">Cargando...</div>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main class="main">
+    <div class="topbar">
+      <h2 id="view-title">Overview</h2>
+      <div class="topbar-right">
+        <input class="api-input" id="api-url" placeholder="http://localhost:8000" value="http://localhost:8000">
+        <input class="api-input" id="api-key" placeholder="API Key" value="dev-key-change-in-prod" style="width:180px">
+        <button class="btn btn-primary" onclick="reloadAll()">↻ Reload</button>
+      </div>
+    </div>
+
+    <!-- Views -->
+    <div id="view-overview"></div>
+    <div id="view-discrepancies" style="display:none"></div>
+    <div id="view-signals"       style="display:none"></div>
+    <div id="view-reports"       style="display:none"></div>
+  </main>
+</div>
+
+<!-- Modal -->
+<div class="modal-bg" id="modal" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h3 id="modal-title">Nota del analista</h3>
+    <textarea id="modal-note" placeholder="Nota opcional..."></textarea>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="modal-confirm" onclick="confirmModal()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const state = {
+  view: 'overview',
+  company: null,
+  discFilter: 'all',
+  sigFilter: 'all',
+  page: { disc: 0, sig: 0, rep: 0 },
+  PAGE_SIZE: 20,
+  modalCb: null,
+};
+
+// ── API ───────────────────────────────────────────────────────────────────────
+function apiUrl()   { return document.getElementById('api-url').value.replace(/\/$/, ''); }
+function apiKey()   { return document.getElementById('api-key').value; }
+
+async function api(path, opts = {}) {
+  const res = await fetch(apiUrl() + path, {
+    ...opts,
+    headers: { 'X-API-Key': apiKey(), 'Content-Type': 'application/json', ...(opts.headers || {}) },
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function setView(v) {
+  state.view = v;
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('nav-' + v)?.classList.add('active');
+  document.querySelectorAll('[id^="view-"]').forEach(el => el.style.display = 'none');
+  document.getElementById('view-' + v).style.display = 'block';
+
+  const titles = { overview: 'Overview', discrepancies: 'Discrepancias', signals: 'Señales narrativas', reports: 'Reportes ingestados' };
+  document.getElementById('view-title').textContent = titles[v] || v;
+
+  renderView(v);
+}
+
+function setCompany(name) {
+  state.company = name;
+  document.querySelectorAll('.company-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.name === name);
+  });
+  renderView(state.view);
+}
+
+// ── Load all ──────────────────────────────────────────────────────────────────
+async function reloadAll() {
+  await loadCompanies();
+  renderView(state.view);
+}
+
+async function loadCompanies() {
+  try {
+    const companies = await api('/companies');
+    const list = document.getElementById('company-list');
+    if (!companies.length) {
+      list.innerHTML = '<div style="padding:8px 12px;color:var(--muted);font-size:12px">Sin empresas aún</div>';
+      return;
+    }
+    list.innerHTML = companies.map(c => `
+      <div class="company-item" data-name="${c.name}" onclick="setCompany('${c.name}')">
+        <span>${c.name}</span>
+        <span style="font-size:11px;color:var(--muted)">${c.ticker || ''}</span>
+      </div>
+    `).join('');
+  } catch(e) {
+    document.getElementById('company-list').innerHTML =
+      `<div style="padding:8px 12px;color:var(--red);font-size:12px">Error: ${e.message}</div>`;
+  }
+}
+
+// ── Render views ──────────────────────────────────────────────────────────────
+async function renderView(v) {
+  if (v === 'overview')        await renderOverview();
+  if (v === 'discrepancies')   await renderDiscrepancies();
+  if (v === 'signals')         await renderSignals();
+  if (v === 'reports')         await renderReports();
+}
+
+// ── OVERVIEW ──────────────────────────────────────────────────────────────────
+async function renderOverview() {
+  const el = document.getElementById('view-overview');
+  el.innerHTML = '<div class="loading"><span class="spinner"></span> Cargando estadísticas...</div>';
+  try {
+    const companyFilter = state.company ? `?company=${encodeURIComponent(state.company)}` : '';
+    const [discs, sigs, reps] = await Promise.all([
+      api('/discrepancies?limit=200' + (state.company ? `&company=${encodeURIComponent(state.company)}` : '')),
+      api('/signals?limit=200'       + (state.company ? `&company=${encodeURIComponent(state.company)}` : '')),
+      api('/reports?limit=100'       + (state.company ? `&company=${encodeURIComponent(state.company)}` : '')),
+    ]);
+
+    const pendingDisc = discs.filter(d => !d.validated).length;
+    const pendingSig  = sigs.filter(s => !s.validated).length;
+    const highDisc    = discs.filter(d => d.severity === 'high').length;
+    const highSig     = sigs.filter(s => s.score > 0.75).length;
+
+    document.getElementById('badge-disc').textContent = pendingDisc;
+    document.getElementById('badge-disc').style.display = pendingDisc ? 'inline' : 'none';
+    document.getElementById('badge-sig').textContent = pendingSig;
+    document.getElementById('badge-sig').style.display = pendingSig ? 'inline' : 'none';
+
+    el.innerHTML = `
+      <div class="stats-row">
+        <div class="stat-card ${pendingDisc > 0 ? 'warn' : 'ok'}">
+          <div class="label">Discrepancias pendientes</div>
+          <div class="value">${pendingDisc}</div>
+          <div class="sub">${discs.length} total · ${highDisc} alto riesgo</div>
+        </div>
+        <div class="stat-card ${pendingSig > 0 ? 'danger' : 'ok'}">
+          <div class="label">Señales pendientes</div>
+          <div class="value">${pendingSig}</div>
+          <div class="sub">${sigs.length} total · ${highSig} score > 0.75</div>
+        </div>
+        <div class="stat-card info">
+          <div class="label">Reportes ingestados</div>
+          <div class="value">${reps.length}</div>
+          <div class="sub">Último: ${reps[0]?.period || '—'}</div>
+        </div>
+        <div class="stat-card ok">
+          <div class="label">Tasa de validación</div>
+          <div class="value">${discs.length ? Math.round((discs.filter(d=>d.validated).length/discs.length)*100) : 0}%</div>
+          <div class="sub">Discrepancias validadas</div>
+        </div>
+      </div>
+
+      <h3 style="margin-bottom:12px;font-size:15px;color:var(--muted)">Discrepancias recientes de alto riesgo</h3>
+      ${renderDiscTable(discs.filter(d=>d.severity==='high').slice(0,5), true)}
+
+      <h3 style="margin:20px 0 12px;font-size:15px;color:var(--muted)">Señales con score alto</h3>
+      ${renderSignalCards(sigs.filter(s=>s.score>0.7).slice(0,3), true)}
+    `;
+  } catch(e) {
+    el.innerHTML = `<div class="empty">Error al cargar: ${e.message}<br><br>
+      <small>Verificá que la API esté corriendo en la URL configurada arriba.</small></div>`;
+  }
+}
+
+// ── DISCREPANCIES ─────────────────────────────────────────────────────────────
+async function renderDiscrepancies() {
+  const el = document.getElementById('view-discrepancies');
+  el.innerHTML = '<div class="loading"><span class="spinner"></span> Cargando discrepancias...</div>';
+  try {
+    let url = '/discrepancies?limit=200';
+    if (state.company) url += `&company=${encodeURIComponent(state.company)}`;
+    if (state.discFilter !== 'all' && state.discFilter !== 'pending' && state.discFilter !== 'validated')
+      url += `&severity=${state.discFilter}`;
+
+    let data = await api(url);
+    if (state.discFilter === 'pending')   data = data.filter(d => !d.validated);
+    if (state.discFilter === 'validated') data = data.filter(d => d.validated);
+
+    const start = state.page.disc * state.PAGE_SIZE;
+    const page  = data.slice(start, start + state.PAGE_SIZE);
+
+    el.innerHTML = `
+      <div class="filters">
+        ${['all','pending','validated','high','medium','low'].map(f => `
+          <button class="filter-btn ${state.discFilter===f?'active':''}"
+            onclick="state.discFilter='${f}';state.page.disc=0;renderDiscrepancies()">
+            ${f.charAt(0).toUpperCase()+f.slice(1)}
+          </button>
+        `).join('')}
+        ${state.company ? `<span style="margin-left:auto;font-size:12px;color:var(--muted)">→ ${state.company}</span>` : ''}
+      </div>
+      ${renderDiscTable(page, false)}
+      ${renderPagination('disc', data.length)}
+    `;
+  } catch(e) {
+    el.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+}
+
+function renderDiscTable(data, compact) {
+  if (!data.length) return '<div class="empty">Sin discrepancias para los filtros seleccionados</div>';
+  return `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Empresa</th><th>Métrica</th><th>Período</th>
+            <th>Anterior</th><th>Actual</th><th>Desviación</th>
+            <th>Severidad</th>
+            ${!compact ? '<th>Estado</th><th>Acción</th>' : ''}
+          </tr>
+        </thead>
+        <tbody>
+          ${data.map(d => `
+            <tr>
+              <td style="font-weight:500">${d.company_name}</td>
+              <td>${d.metric_name}</td>
+              <td style="color:var(--muted);font-size:12px">${d.period_previous} → ${d.period_current}</td>
+              <td style="color:var(--muted)">${fmtNum(d.value_previous)}</td>
+              <td style="font-weight:500">${fmtNum(d.value_current)}</td>
+              <td class="${d.deviation_pct >= 0 ? 'dev-up' : 'dev-down'}">
+                ${d.deviation_pct >= 0 ? '▲' : '▼'} ${Math.abs(d.deviation_pct).toFixed(1)}%
+              </td>
+              <td><span class="badge badge-${d.severity}">${d.severity}</span></td>
+              ${!compact ? `
+              <td>${d.validated
+                ? `<span class="badge badge-approved">Validado</span>`
+                : `<span class="badge badge-pending">Pendiente</span>`}
+              </td>
+              <td>
+                ${!d.validated ? `
+                <div class="actions">
+                  <button class="btn btn-approve" onclick="validateDisc('${d.id}')">✓ Validar</button>
+                </div>` : `<span style="color:var(--muted);font-size:12px">${d.validated_by || '—'}</span>`}
+              </td>` : ''}
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ── SIGNALS ───────────────────────────────────────────────────────────────────
+async function renderSignals() {
+  const el = document.getElementById('view-signals');
+  el.innerHTML = '<div class="loading"><span class="spinner"></span> Cargando señales...</div>';
+  try {
+    let url = '/signals?limit=200';
+    if (state.company) url += `&company=${encodeURIComponent(state.company)}`;
+    if (state.sigFilter === 'pending')   url += '&validated=false';
+    if (state.sigFilter === 'validated') url += '&validated=true';
+
+    let data = await api(url);
+    const start = state.page.sig * state.PAGE_SIZE;
+    const page  = data.slice(start, start + state.PAGE_SIZE);
+
+    el.innerHTML = `
+      <div class="filters">
+        ${['all','pending','validated'].map(f => `
+          <button class="filter-btn ${state.sigFilter===f?'active':''}"
+            onclick="state.sigFilter='${f}';state.page.sig=0;renderSignals()">
+            ${f.charAt(0).toUpperCase()+f.slice(1)}
+          </button>
+        `).join('')}
+        ${state.company ? `<span style="margin-left:auto;font-size:12px;color:var(--muted)">→ ${state.company}</span>` : ''}
+      </div>
+      ${renderSignalCards(page, false)}
+      ${renderPagination('sig', data.length)}
+    `;
+  } catch(e) {
+    el.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+}
+
+function renderSignalCards(data, compact) {
+  if (!data.length) return '<div class="empty">Sin señales para los filtros seleccionados</div>';
+  const TYPE_LABELS = {
+    defensive_language: 'Lenguaje defensivo',
+    smoothing:          'Suavización',
+    omission:           'Omisión',
+    inconsistency:      'Inconsistencia',
+    guidance_change:    'Cambio de guidance',
+    hedge_excess:       'Exceso de hedging',
+  };
+  return data.map(s => `
+    <div class="signal-card">
+      <div class="signal-header">
+        <span class="signal-type">${TYPE_LABELS[s.signal_type] || s.signal_type}</span>
+        <span style="color:var(--muted);font-size:12px">·</span>
+        <span style="font-size:12px;color:var(--muted)">${s.company_name} · ${s.period}</span>
+        <div style="margin-left:auto">
+          ${s.validated
+            ? `<span class="badge badge-${s.decision || 'approved'}">${s.decision || 'validado'}</span>`
+            : `<span class="badge badge-pending">pendiente</span>`}
+        </div>
+      </div>
+
+      <div class="score-bar-wrap" style="margin-bottom:8px">
+        <div class="score-bar">
+          <div class="score-bar-fill" style="width:${s.score*100}%;background:${s.score>0.75?'var(--red)':s.score>0.5?'var(--amber)':'var(--accent)'}"></div>
+        </div>
+        <span class="score-num" style="color:${s.score>0.75?'var(--red)':s.score>0.5?'var(--amber)':'var(--accent)'}">${s.score.toFixed(2)}</span>
+      </div>
+
+      ${s.source_text ? `<div class="signal-quote">"${s.source_text}"</div>` : ''}
+      <div class="signal-justification">${s.justification}</div>
+
+      ${!compact && !s.validated ? `
+      <div class="signal-footer">
+        <span style="font-size:11px;color:var(--muted)">report: ${s.report_id?.slice(0,8)}...</span>
+        <div class="actions">
+          <button class="btn btn-approve" onclick="validateSignal('${s.id}','approved')">✓ Aprobar</button>
+          <button class="btn btn-reject"  onclick="validateSignal('${s.id}','rejected')">✗ Rechazar</button>
+        </div>
+      </div>` : ''}
+      ${s.analyst_note ? `<div style="margin-top:8px;font-size:12px;color:var(--muted);font-style:italic">📝 ${s.analyst_note}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// ── REPORTS ───────────────────────────────────────────────────────────────────
+async function renderReports() {
+  const el = document.getElementById('view-reports');
+  el.innerHTML = '<div class="loading"><span class="spinner"></span> Cargando reportes...</div>';
+  try {
+    let url = '/reports?limit=100';
+    if (state.company) url += `&company=${encodeURIComponent(state.company)}`;
+    const data = await api(url);
+    const start = state.page.rep * state.PAGE_SIZE;
+    const page  = data.slice(start, start + state.PAGE_SIZE);
+    el.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Empresa</th><th>Período</th><th>Tipo</th><th>Páginas</th><th>Caracteres</th><th>Ingestado</th><th>Warnings</th></tr>
+          </thead>
+          <tbody>
+            ${page.map(r => `
+              <tr>
+                <td style="font-weight:500">${r.company_name}</td>
+                <td>${r.period}</td>
+                <td><span class="badge badge-info">${r.document_type}</span></td>
+                <td style="color:var(--muted)">${r.page_count || '—'}</td>
+                <td style="color:var(--muted)">${r.char_count ? r.char_count.toLocaleString() : '—'}</td>
+                <td style="color:var(--muted);font-size:12px">${fmtDate(r.processed_at)}</td>
+                <td style="color:${r.parse_warnings?.length ? 'var(--amber)' : 'var(--muted)'}">
+                  ${r.parse_warnings?.length ? `⚠ ${r.parse_warnings.length}` : '—'}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      ${renderPagination('rep', data.length)}
+    `;
+  } catch(e) {
+    el.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+function validateDisc(id) {
+  openModal('Validar discrepancia', async (note) => {
+    await api(`/discrepancies/${id}/validate`, {
+      method: 'POST',
+      body: JSON.stringify({ validated_by: 'analyst', analyst_note: note }),
+    });
+    toast('Discrepancia validada', 'ok');
+    renderDiscrepancies();
+  });
+}
+
+function validateSignal(id, decision) {
+  const label = decision === 'approved' ? 'Aprobar' : 'Rechazar';
+  openModal(`${label} señal`, async (note) => {
+    await api(`/signals/${id}/validate`, {
+      method: 'POST',
+      body: JSON.stringify({ decision, analyst_note: note, analyst: 'analyst' }),
+    });
+    toast(`Señal ${decision === 'approved' ? 'aprobada' : 'rechazada'}`, 'ok');
+    renderSignals();
+  });
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function openModal(title, cb) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-note').value = '';
+  state.modalCb = cb;
+  document.getElementById('modal').style.display = 'flex';
+}
+function closeModal() { document.getElementById('modal').style.display = 'none'; state.modalCb = null; }
+async function confirmModal() {
+  const note = document.getElementById('modal-note').value.trim() || null;
+  if (state.modalCb) {
+    try { await state.modalCb(note); closeModal(); }
+    catch(e) { toast('Error: ' + e.message, 'err'); }
+  }
+}
+
+// ── Pagination ────────────────────────────────────────────────────────────────
+function renderPagination(key, total) {
+  const pages = Math.ceil(total / state.PAGE_SIZE);
+  if (pages <= 1) return '';
+  const cur = state.page[key];
+  return `
+    <div class="pagination">
+      <button class="page-btn" onclick="changePage('${key}',-1)" ${cur===0?'disabled':''}>← Anterior</button>
+      <span style="color:var(--muted);font-size:12px">${cur+1} / ${pages}</span>
+      <button class="page-btn" onclick="changePage('${key}',1)" ${cur>=pages-1?'disabled':''}>Siguiente →</button>
+    </div>
+  `;
+}
+function changePage(key, dir) {
+  state.page[key] = Math.max(0, state.page[key] + dir);
+  renderView(state.view);
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, type = 'ok') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ── Formatters ────────────────────────────────────────────────────────────────
+function fmtNum(v) {
+  if (v == null) return '—';
+  const abs = Math.abs(v);
+  if (abs >= 1e9) return (v/1e9).toFixed(2) + 'B';
+  if (abs >= 1e6) return (v/1e6).toFixed(2) + 'M';
+  if (abs >= 1e3) return (v/1e3).toFixed(1) + 'K';
+  return Number(v).toFixed(2);
+}
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  loadCompanies();
+  renderView('overview');
+});
+</script>
+</body>
+</html>

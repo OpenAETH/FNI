@@ -1,0 +1,6 @@
+# Backend
+uvicorn api.main:app --reload --port 8000
+
+# Frontend
+# Abrir frontend/dashboard.html directo en el browser
+# Configurar la URL en el campo de arriba derecha: http://localhost:8000
