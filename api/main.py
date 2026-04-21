@@ -17,6 +17,9 @@ from db import supabase_client as sb, mongo_client as mg
 from api.comparator import compare_quarters, save_discrepancies
 from api.signal_detector import detect_signals, save_signals
 
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
 
 # ── App setup ─────────────────────────────────────────────────────────────────
 
@@ -26,12 +29,17 @@ app = FastAPI(
     docs_url="/docs",
 )
 
+# Reemplazar la configuración CORS actual
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],      # En producción: reemplazar con dominio de Cloudflare Pages
+    allow_origins=ALLOWED_ORIGINS if ALLOWED_ORIGINS != ["*"] else ["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -322,3 +330,31 @@ def validate_item(body: dict):
         ))
     else:
         raise HTTPException(400, f"Tipo inválido: {item_type}")
+
+
+# ── Servir archivos estáticos (Frontend) ────────────────────────────────────
+
+# Determinar si estamos en producción (Render) o desarrollo local
+FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+
+# Si la carpeta frontend existe, servir archivos estáticos
+if os.path.exists(FRONTEND_DIR):
+    app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+    
+    @app.get("/")
+    async def serve_dashboard():
+        """Sirve el dashboard HTML principal"""
+        dashboard_path = os.path.join(FRONTEND_DIR, "dashboard.html")
+        if os.path.exists(dashboard_path):
+            return FileResponse(dashboard_path)
+        return {"message": "FNI API is running. Dashboard not found."}
+    
+    @app.get("/dashboard")
+    async def dashboard_redirect():
+        """Redirección al dashboard"""
+        return FileResponse(os.path.join(FRONTEND_DIR, "dashboard.html"))
+    
+    @app.get("/health-check")
+    async def health_check():
+        """Endpoint simple para health checks"""
+        return {"status": "healthy", "service": "FNI API"}

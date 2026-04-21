@@ -7,6 +7,10 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
     envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: USE_MOCK
+        value: false
       - key: GROQ_API_KEY
         sync: false
       - key: SUPABASE_URL
@@ -17,5 +21,7 @@ services:
         sync: false
       - key: API_KEY
         sync: false
+      - key: ALLOWED_ORIGINS
+        value: "*"
       - key: LOG_LEVEL
         value: INFO
